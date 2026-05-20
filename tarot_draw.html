@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>タロットカード</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif;
+    background: #faf9f7;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    color: #333;
+    letter-spacing: 0.05em;
+  }
+  .controls {
+    max-width: 480px;
+    margin: 0 auto 2rem;
+    background: #fff;
+    border: 1px solid #e8e6e0;
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+  }
+  .range-row label {
+    font-size: 14px;
+    color: #666;
+    white-space: nowrap;
+  }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #e0ddd6;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #5a4fcf;
+    cursor: pointer;
+  }
+  .count-label {
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 32px;
+    color: #1a1a1a;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #5a4fcf;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.15s;
+  }
+  button:hover { background: #4a3fbf; }
+  button:active { background: #3a2faf; transform: scale(0.99); }
+  .grid {
+    max-width: 680px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    opacity: 1;
+    transition: opacity 0.25s;
+  }
+  .grid.fade { opacity: 0; }
+  .card {
+    background: #fff;
+    border: 1px solid #e8e6e0;
+    border-radius: 12px;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .card-num { font-size: 11px; color: #999; }
+  .card-en { font-size: 13px; font-weight: 500; color: #1a1a1a; line-height: 1.4; }
+  .card-jp { font-size: 12px; color: #666; }
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+  }
+  .major { background: #EEEDFE; color: #3C3489; }
+  .wands { background: #FAEEDA; color: #633806; }
+  .heart { background: #FBEAF0; color: #72243E; }
+  .sword { background: #E6F1FB; color: #0C447C; }
+  .crystal { background: #EAF3DE; color: #27500A; }
+  .placeholder {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: center;
+    color: #aaa;
+    font-size: 14px;
+    padding: 3rem 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>タロットカード</h1>
+
+<div class="controls">
+  <div class="range-row">
+    <label>枚数</label>
+    <input type="range" min="1" max="10" value="1" step="1" id="count-range" oninput="document.getElementById('count-out').textContent=this.value+'枚'">
+    <span class="count-label" id="count-out">1枚</span>
+  </div>
+  <button onclick="drawCards()">カードを引く</button>
+</div>
+
+<div id="result"><p class="placeholder">カードを引いてください</p></div>
+
+<script>
+const ALL_CARDS = [
+  {num:"0", en:"Little Red Cap", jp:"赤ずきん", type:"major"},
+  {num:"I", en:"Aladdin and the Magic Lamp", jp:"アラジンと魔法のランプ", type:"major"},
+  {num:"II", en:"The Fairy Godmother", jp:"シンデレラを助ける妖精", type:"major"},
+  {num:"III", en:"Mother Goose", jp:"マザーグース", type:"major"},
+  {num:"IV", en:"The Emperor's New Clothes", jp:"裸の王様", type:"major"},
+  {num:"V", en:"The Wizard", jp:"魔法使い", type:"major"},
+  {num:"VI", en:"Hansel and Gretel", jp:"ヘンゼルとグレーテル", type:"major"},
+  {num:"VII", en:"Peter Pan", jp:"ピーターパン", type:"major"},
+  {num:"VIII", en:"Beauty and the Beast", jp:"美女と野獣", type:"major"},
+  {num:"IX", en:"Snow White", jp:"白雪姫", type:"major"},
+  {num:"X", en:"Alice in Wonderland", jp:"不思議の国のアリス", type:"major"},
+  {num:"XI", en:"The Midas Touch", jp:"ミダス王", type:"major"},
+  {num:"XII", en:"Jack and the Beanstalk", jp:"ジャックと豆の木", type:"major"},
+  {num:"XIII", en:"Sleeping Beauty", jp:"眠れる森の美女", type:"major"},
+  {num:"XIV", en:"The Guardian Angel", jp:"守護天使", type:"major"},
+  {num:"XV", en:"The Big Bad Wolf", jp:"大きな悪い狼", type:"major"},
+  {num:"XVI", en:"Rapunzel", jp:"ラプンツェル", type:"major"},
+  {num:"XVII", en:"Wishing Upon a Star", jp:"星に願いを", type:"major"},
+  {num:"XVIII", en:"Cinderella", jp:"シンデレラ", type:"major"},
+  {num:"XIX", en:"The Yellow Brick Road", jp:"オズの魔法使い", type:"major"},
+  {num:"XX", en:"The Three Little Pigs", jp:"三匹の子ブタ", type:"major"},
+  {num:"XXI", en:"The Earth Child", jp:"地球の子供", type:"major"},
+  {num:"Ace", en:"Ace of Wands", jp:"", type:"wands"},
+  {num:"2", en:"Two of Wands", jp:"", type:"wands"},
+  {num:"3", en:"Three of Wands", jp:"", type:"wands"},
+  {num:"4", en:"Four of Wands", jp:"", type:"wands"},
+  {num:"5", en:"Five of Wands", jp:"", type:"wands"},
+  {num:"6", en:"Six of Wands", jp:"", type:"wands"},
+  {num:"7", en:"Seven of Wands", jp:"", type:"wands"},
+  {num:"8", en:"Eight of Wands", jp:"", type:"wands"},
+  {num:"9", en:"Nine of Wands", jp:"", type:"wands"},
+  {num:"10", en:"Ten of Wands", jp:"", type:"wands"},
+  {num:"Child", en:"Child of Wands", jp:"星の王子さま", type:"wands"},
+  {num:"Seeker", en:"Seeker of Wands", jp:"ドロシー", type:"wands"},
+  {num:"Guide", en:"Guide of Wands", jp:"ハーメルンの笛吹き", type:"wands"},
+  {num:"Guardian", en:"Guardian of Wands", jp:"大天使ラファエル", type:"wands"},
+  {num:"Ace", en:"Ace of Heart", jp:"", type:"heart"},
+  {num:"2", en:"Two of Heart", jp:"", type:"heart"},
+  {num:"3", en:"Three of Heart", jp:"", type:"heart"},
+  {num:"4", en:"Four of Heart", jp:"", type:"heart"},
+  {num:"5", en:"Five of Heart", jp:"", type:"heart"},
+  {num:"6", en:"Six of Heart", jp:"", type:"heart"},
+  {num:"7", en:"Seven of Heart", jp:"", type:"heart"},
+  {num:"8", en:"Eight of Heart", jp:"", type:"heart"},
+  {num:"9", en:"Nine of Heart", jp:"", type:"heart"},
+  {num:"10", en:"Ten of Heart", jp:"", type:"heart"},
+  {num:"Child", en:"Child of Hearts", jp:"ゴルディロックス", type:"heart"},
+  {num:"Seeker", en:"Seeker of Hearts", jp:"ブリキ男", type:"heart"},
+  {num:"Guide", en:"Guide of Hearts", jp:"北のよい妖精", type:"heart"},
+  {num:"Guardian", en:"Guardian of Hearts", jp:"ガブリエル", type:"heart"},
+  {num:"Ace", en:"Ace of Sword", jp:"", type:"sword"},
+  {num:"2", en:"Two of Sword", jp:"", type:"sword"},
+  {num:"3", en:"Three of Sword", jp:"", type:"sword"},
+  {num:"4", en:"Four of Sword", jp:"", type:"sword"},
+  {num:"5", en:"Five of Sword", jp:"", type:"sword"},
+  {num:"6", en:"Six of Sword", jp:"", type:"sword"},
+  {num:"7", en:"Seven of Sword", jp:"", type:"sword"},
+  {num:"8", en:"Eight of Sword", jp:"", type:"sword"},
+  {num:"9", en:"Nine of Sword", jp:"", type:"sword"},
+  {num:"10", en:"Ten of Sword", jp:"", type:"sword"},
+  {num:"Child", en:"Child of Sword", jp:"ピノキオ", type:"sword"},
+  {num:"Seeker", en:"Seeker of Sword", jp:"案山子", type:"sword"},
+  {num:"Guide", en:"Guide of Sword", jp:"ロビンフッド", type:"sword"},
+  {num:"Guardian", en:"Guardian of Sword", jp:"ミカエル", type:"sword"},
+  {num:"Ace", en:"Ace of Crystal", jp:"", type:"crystal"},
+  {num:"2", en:"Two of Crystal", jp:"", type:"crystal"},
+  {num:"3", en:"Three of Crystal", jp:"", type:"crystal"},
+  {num:"4", en:"Four of Crystal", jp:"", type:"crystal"},
+  {num:"5", en:"Five of Crystal", jp:"", type:"crystal"},
+  {num:"6", en:"Six of Crystal", jp:"", type:"crystal"},
+  {num:"7", en:"Seven of Crystal", jp:"", type:"crystal"},
+  {num:"8", en:"Eight of Crystal", jp:"", type:"crystal"},
+  {num:"9", en:"Nine of Crystal", jp:"", type:"crystal"},
+  {num:"10", en:"Ten of Crystal", jp:"", type:"crystal"},
+  {num:"Child", en:"Child of Crystal", jp:"ハックルベリーフィン", type:"crystal"},
+  {num:"Seeker", en:"Seeker of Crystal", jp:"臆病なライオン", type:"crystal"},
+  {num:"Guide", en:"Guide of Crystal", jp:"聖ニコラス", type:"crystal"},
+  {num:"Guardian", en:"Guardian of Crystal", jp:"ガイア", type:"crystal"},
+];
+
+const BADGE = {
+  major:   ["major",   "大アルカナ"],
+  wands:   ["wands",   "ワンド"],
+  heart:   ["heart",   "ハート"],
+  sword:   ["sword",   "ソード"],
+  crystal: ["crystal", "クリスタル"],
+};
+
+function drawCards() {
+  const n = parseInt(document.getElementById("count-range").value);
+  const drawn = [...ALL_CARDS].sort(() => Math.random() - 0.5).slice(0, n);
+  const result = document.getElementById("result");
+  result.style.opacity = "0";
+  setTimeout(() => {
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    grid.innerHTML = drawn.map(c => {
+      const [cls, label] = BADGE[c.type];
+      return `<div class="card">
+        <div class="card-num">${c.num}</div>
+        <div class="card-en">${c.en}</div>
+        ${c.jp ? `<div class="card-jp">${c.jp}</div>` : ""}
+        <span class="badge ${cls}">${label}</span>
+      </div>`;
+    }).join("");
+    result.innerHTML = "";
+    result.appendChild(grid);
+    result.style.opacity = "1";
+  }, 200);
+}
+</script>
+</body>
+</html>
