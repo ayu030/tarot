@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TAROT</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #00CFFF;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", sans-serif;
+    background: #00CFFF;
+    color: #1a1a1a;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  h1 {
+    text-align: center;
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 2rem;
+    color: #fff;
+    letter-spacing: 0.05em;
+  }
+  .controls {
+    max-width: 480px;
+    margin: 0 auto 2rem;
+    background: #fff;
+    border: 1px solid #e8e6e0;
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.25rem;
+  }
+  .range-row label { font-size: 14px; color: #666; white-space: nowrap; }
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: #e0ddd6;
+    border-radius: 2px;
+    outline: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: #FF1493;
+    cursor: pointer;
+  }
+  .count-label { font-size: 14px; font-weight: 500; min-width: 32px; color: #1a1a1a; }
+  .btn-wrap { position: relative; }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #FF1493;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+    transition: background 0.15s;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    overflow: hidden;
+  }
+  button:active { background: #e0007a; }
+  button.shuffling { background: #cc006b; }
+  .progress-bar {
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.6);
+    width: 0%;
+    transition: none;
+    border-radius: 0 0 8px 8px;
+  }
+  .grid {
+    max-width: 720px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e8e6e0;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card img {
+    width: 100%;
+    aspect-ratio: 2/3;
+    object-fit: cover;
+    display: block;
+  }
+  .card-info { padding: 10px 8px; text-align: center; }
+  .card-en { font-size: 12px; font-weight: 500; color: #1a1a1a; line-height: 1.4; margin-bottom: 2px; }
+  .card-jp { font-size: 11px; color: #666; margin-bottom: 6px; }
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 6px;
+  }
+  .major { background: #EEEDFE; color: #3C3489; }
+  .wands { background: #FAEEDA; color: #633806; }
+  .heart { background: #FBEAF0; color: #72243E; }
+  .sword { background: #E6F1FB; color: #0C447C; }
+  .crystal { background: #EAF3DE; color: #27500A; }
+  .placeholder {
+    max-width: 720px;
+    margin: 0 auto;
+    text-align: center;
+    color: #fff;
+    font-size: 14px;
+    padding: 3rem 0;
+  }
+  .hint {
+    text-align: center;
+    font-size: 12px;
+    color: #fff;
+    margin-bottom: 1.25rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>TAROT</h1>
+
+<div class="controls">
+  <div class="range-row">
+    <label>枚数</label>
+    <input type="range" min="1" max="10" value="1" step="1" id="count-range"
+      oninput="document.getElementById('count-out').textContent=this.value+'枚'">
+    <span class="count-label" id="count-out">1枚</span>
+  </div>
+  <p class="hint">長押しでシャッフル、離したらストップ</p>
+  <div class="btn-wrap">
+    <button id="draw-btn">カードを引く</button>
+    <div class="progress-bar" id="progress"></div>
+  </div>
+</div>
+
+<div id="result"><p class="placeholder">カードを引いてください</p></div>
+
+<script>
+const ALL_CARDS = [
+  {en:"Little Red Cap", jp:"赤ずきん", type:"major", img:"大アルカナ_17.png"},
+  {en:"Aladdin & the Magic Lamp", jp:"アラジンと魔法のランプ", type:"major", img:"大アルカナ_06.png"},
+  {en:"The Fairy Godmother", jp:"シンデレラを助ける妖精", type:"major", img:"大アルカナ_04.png"},
+  {en:"Mother Goose", jp:"マザーグース", type:"major", img:"大アルカナ_15.png"},
+  {en:"The Emperor's New Clothes", jp:"裸の王様", type:"major", img:"大アルカナ_01.png"},
+  {en:"The Wizard", jp:"魔法使い", type:"major", img:"大アルカナ_07.png"},
+  {en:"Hansel & Gretel", jp:"ヘンゼルとグレーテル", type:"major", img:"大アルカナ_20.png"},
+  {en:"Peter Pan", jp:"ピーターパン", type:"major", img:"大アルカナ_10.png"},
+  {en:"Beauty & the Beast", jp:"美女と野獣", type:"major", img:"大アルカナ_13.png"},
+  {en:"Snow White", jp:"白雪姫", type:"major", img:"大アルカナ_14.png"},
+  {en:"Alice in Wonderland", jp:"不思議の国のアリス", type:"major", img:"大アルカナ_21.png"},
+  {en:"The Midas Touch", jp:"ミダス王", type:"major", img:"大アルカナ_03.png"},
+  {en:"Jack & the Beanstalk", jp:"ジャックと豆の木", type:"major", img:"大アルカナ_16.png"},
+  {en:"Sleeping Beauty", jp:"眠れる森の美女", type:"major", img:"大アルカナ_22.png"},
+  {en:"The Guardian Angel", jp:"守護天使", type:"major", img:"大アルカナ_12.jpg"},
+  {en:"The Big Bad Wolf", jp:"大きな悪い狼", type:"major", img:"大アルカナ_02.jpg"},
+  {en:"Rapunzel", jp:"ラプンツェル", type:"major", img:"大アルカナ_08.jpg"},
+  {en:"Wishing Upon a Star", jp:"星に願いを", type:"major", img:"大アルカナ_19.jpg"},
+  {en:"Cinderella", jp:"シンデレラ", type:"major", img:"大アルカナ_11.jpg"},
+  {en:"The Yellow Brick Road", jp:"オズの魔法使い", type:"major", img:"大アルカナ_18.jpg"},
+  {en:"The Three Little Pigs", jp:"三匹の子ブタ", type:"major", img:"大アルカナ_05.jpg"},
+  {en:"The Earth Child", jp:"地球の子供", type:"major", img:"大アルカナ_09.jpg"},
+  {en:"Ace of Wands", jp:"", type:"wands", img:"ワント__03.jpg"},
+  {en:"Two of Wands", jp:"", type:"wands", img:"ワント__14.jpg"},
+  {en:"Three of Wands", jp:"", type:"wands", img:"ワント__04.jpg"},
+  {en:"Four of Wands", jp:"", type:"wands", img:"ワント__06.jpg"},
+  {en:"Five of Wands", jp:"", type:"wands", img:"ワント__08.jpg"},
+  {en:"Six of Wands", jp:"", type:"wands", img:"ワント__02.jpg"},
+  {en:"Seven of Wands", jp:"", type:"wands", img:"ワント__01.jpg"},
+  {en:"Eight of Wands", jp:"", type:"wands", img:"ワント__09.jpg"},
+  {en:"Nine of Wands", jp:"", type:"wands", img:"ワント__11.jpg"},
+  {en:"Ten of Wands", jp:"", type:"wands", img:"ワント__05.jpg"},
+  {en:"Child of Wands", jp:"星の王子さま", type:"wands", img:"ワント__10.jpg"},
+  {en:"Seeker of Wands", jp:"ドロシー", type:"wands", img:"ワント__13.jpg"},
+  {en:"Guide of Wands", jp:"ハーメルンの笛吹き", type:"wands", img:"ワント__07.jpg"},
+  {en:"Guardian of Wands", jp:"大天使ラファエル", type:"wands", img:"ワント__12.jpg"},
+  {en:"Ace of Hearts", jp:"", type:"heart", img:"ハート_06.jpg"},
+  {en:"Two of Hearts", jp:"", type:"heart", img:"ハート_13.jpg"},
+  {en:"Three of Hearts", jp:"", type:"heart", img:"ハート_09.jpg"},
+  {en:"Four of Hearts", jp:"", type:"heart", img:"ハート_04.jpg"},
+  {en:"Five of Hearts", jp:"", type:"heart", img:"ハート_07.jpg"},
+  {en:"Six of Hearts", jp:"", type:"heart", img:"ハート_10.jpg"},
+  {en:"Seven of Hearts", jp:"", type:"heart", img:"ハート_11.jpg"},
+  {en:"Eight of Hearts", jp:"", type:"heart", img:"ハート_03.jpg"},
+  {en:"Nine of Hearts", jp:"", type:"heart", img:"ハート_12.jpg"},
+  {en:"Ten of Hearts", jp:"", type:"heart", img:"ハート_08.jpg"},
+  {en:"Child of Hearts", jp:"ゴルディロックス", type:"heart", img:"ハート_14.jpg"},
+  {en:"Seeker of Hearts", jp:"ブリキ男", type:"heart", img:"ハート_05.jpg"},
+  {en:"Guide of Hearts", jp:"北のよい妖精", type:"heart", img:"ハート_02.jpg"},
+  {en:"Guardian of Hearts", jp:"ガブリエル", type:"heart", img:"ハート_01.jpg"},
+  {en:"Ace of Swords", jp:"", type:"sword", img:"ソート__04.png"},
+  {en:"Two of Swords", jp:"", type:"sword", img:"ソート__08.png"},
+  {en:"Three of Swords", jp:"", type:"sword", img:"ソート__14.png"},
+  {en:"Four of Swords", jp:"", type:"sword", img:"ソート__01.png"},
+  {en:"Five of Swords", jp:"", type:"sword", img:"ソート__09.png"},
+  {en:"Six of Swords", jp:"", type:"sword", img:"ソート__06.png"},
+  {en:"Seven of Swords", jp:"", type:"sword", img:"ソート__05.png"},
+  {en:"Eight of Swords", jp:"", type:"sword", img:"ソート__07.png"},
+  {en:"Nine of Swords", jp:"", type:"sword", img:"ソート__03.png"},
+  {en:"Ten of Swords", jp:"", type:"sword", img:"ソート__11.png"},
+  {en:"Child of Swords", jp:"ピノキオ", type:"sword", img:"ソート__02.png"},
+  {en:"Seeker of Swords", jp:"案山子", type:"sword", img:"ソート__12.png"},
+  {en:"Guide of Swords", jp:"ロビンフッド", type:"sword", img:"ソート__10.png"},
+  {en:"Guardian of Swords", jp:"ミカエル", type:"sword", img:"ソート__13.png"},
+  {en:"Ace of Crystals", jp:"", type:"crystal", img:"クリスタル_12.jpg"},
+  {en:"Two of Crystals", jp:"", type:"crystal", img:"クリスタル_07.jpg"},
+  {en:"Three of Crystals", jp:"", type:"crystal", img:"クリスタル_03.jpg"},
+  {en:"Four of Crystals", jp:"", type:"crystal", img:"クリスタル_13.jpg"},
+  {en:"Five of Crystals", jp:"", type:"crystal", img:"クリスタル_02.jpg"},
+  {en:"Six of Crystals", jp:"", type:"crystal", img:"クリスタル_09.jpg"},
+  {en:"Seven of Crystals", jp:"", type:"crystal", img:"クリスタル_01.jpg"},
+  {en:"Eight of Crystals", jp:"", type:"crystal", img:"クリスタル_04.jpg"},
+  {en:"Nine of Crystals", jp:"", type:"crystal", img:"クリスタル_08.jpg"},
+  {en:"Ten of Crystals", jp:"", type:"crystal", img:"クリスタル_06.jpg"},
+  {en:"Child of Crystals", jp:"ハックルベリーフィン", type:"crystal", img:"クリスタル_05.jpg"},
+  {en:"Seeker of Crystals", jp:"臆病なライオン", type:"crystal", img:"クリスタル_11.jpg"},
+  {en:"Guide of Crystals", jp:"聖ニコラス", type:"crystal", img:"クリスタル_10.jpg"},
+  {en:"Guardian of Crystals", jp:"ガイア", type:"crystal", img:"クリスタル_14.jpg"},
+];
+
+const BADGE = {
+  major:   ["major",   "大アルカナ"],
+  wands:   ["wands",   "ワンド"],
+  heart:   ["heart",   "ハート"],
+  sword:   ["sword",   "ソード"],
+  crystal: ["crystal", "クリスタル"],
+};
+
+function getRandomCards(n) {
+  return [...ALL_CARDS].sort(() => Math.random() - 0.5).slice(0, n);
+}
+
+function renderCards(cards) {
+  const n = cards.length;
+  const grid = document.getElementById("result");
+  grid.innerHTML = `<div class="grid">${cards.map(c => {
+    const [cls, label] = BADGE[c.type];
+    return `<div class="card">
+      <img src="${c.img}" alt="${c.en}" loading="lazy">
+      <div class="card-info">
+        <div class="card-en">${c.en}</div>
+        ${c.jp ? `<div class="card-jp">${c.jp}</div>` : ""}
+        <span class="badge ${cls}">${label}</span>
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+}
+
+const btn = document.getElementById("draw-btn");
+const progress = document.getElementById("progress");
+let shuffleInterval = null;
+let pressStart = null;
+let progressAnim = null;
+
+function startShuffle() {
+  const n = parseInt(document.getElementById("count-range").value);
+  pressStart = Date.now();
+  btn.classList.add("shuffling");
+  btn.textContent = "シャッフル中…";
+
+  // Show shuffling cards rapidly
+  shuffleInterval = setInterval(() => {
+    renderCards(getRandomCards(n));
+  }, 120);
+
+  // Animate progress bar
+  function animProgress() {
+    const elapsed = Date.now() - pressStart;
+    const pct = Math.min((elapsed / 5000) * 100, 100);
+    progress.style.width = pct + "%";
+    if (elapsed < 5000) {
+      progressAnim = requestAnimationFrame(animProgress);
+    } else {
+      stopShuffle();
+    }
+  }
+  progressAnim = requestAnimationFrame(animProgress);
+}
+
+function stopShuffle() {
+  if (!shuffleInterval) return;
+  clearInterval(shuffleInterval);
+  shuffleInterval = null;
+  cancelAnimationFrame(progressAnim);
+
+  const n = parseInt(document.getElementById("count-range").value);
+  renderCards(getRandomCards(n));
+
+  btn.classList.remove("shuffling");
+  btn.textContent = "カードを引く";
+  progress.style.width = "0%";
+  pressStart = null;
+}
+
+// Mouse events
+btn.addEventListener("mousedown", startShuffle);
+btn.addEventListener("mouseup", stopShuffle);
+btn.addEventListener("mouseleave", stopShuffle);
+
+// Touch events
+btn.addEventListener("touchstart", (e) => { e.preventDefault(); startShuffle(); }, { passive: false });
+btn.addEventListener("touchend", (e) => { e.preventDefault(); stopShuffle(); }, { passive: false });
+</script>
+</body>
+</html>
